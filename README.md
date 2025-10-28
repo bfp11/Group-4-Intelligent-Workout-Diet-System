@@ -68,7 +68,7 @@ Erick Bardales	Project Manager	Documentation and coordination
 - AI Integration: OpenAI API (GPT-based models)
 - Version Control: Git + GitHub
 
-  🧪 Future Improvements
+🧪 Future Improvements
 - Add user authentication and profile management
 - Enable real-time progress tracking
 - Introduce analytics for nutrition and fitness trends

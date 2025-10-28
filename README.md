@@ -21,13 +21,21 @@ The Intelligent Workout and Diet Planning System is a web application that gener
 
 📁 Folder Structure
 project-root/
+
 │
+
 ├── frontend/           # UI components and pages
+
 ├── backend/            # API routes, controllers, validation logic
+
 ├── database/           # SQL scripts or schema definitions
+
 ├── docs/               # Reports, SRS, UML diagrams, etc.
+
 ├── .gitignore
+
 ├── README.md
+
 └── LICENSE
 
 ⚙️ Installation & Setup

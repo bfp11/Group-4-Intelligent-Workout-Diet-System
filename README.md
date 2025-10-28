@@ -38,6 +38,7 @@ project-root/
 
 └── LICENSE
 
+
 ⚙️ Installation & Setup
 
 Clone the repository
@@ -62,11 +63,11 @@ Run the app
 npm start
 
 👥 Team Members
-Name	Role	Responsibilities
-Eathen Whittle	Database Developer	Schema design, Supabase integration
-Micah Thompson	Frontend Developer	UI and user interaction
-Jordan Trevino	Backend Developer	API, LLM, and rules engine
-Erick Bardales	Project Manager	Documentation and coordination
+-      Name	             Role	               Responsibilities
+- Eathen Whittle	Database Developer	Schema design, Supabase integration
+- Micah Thompson	Frontend Developer	UI and user interaction
+- Jordan Trevino	Backend Developer	  API, LLM, and rules engine
+- Erick Bardales	Project Manager	    Documentation and coordination
 
 🧩 Tech Stack
 - Frontend: React / HTML / CSS / JavaScript

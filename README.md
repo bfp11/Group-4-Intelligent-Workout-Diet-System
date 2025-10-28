@@ -1,8 +1,7 @@
 # Group-4-Intelligent-Workout-Diet-System
 Group 4’s project repository for the Intelligent Workout and Diet Planning System — a health and wellness web app that generates personalized workout and nutrition plans using AI and safety-based rules.
-🧠 Intelligent Workout and Diet Planning System
-📋 Overview
 
+📋 Overview
 The Intelligent Workout and Diet Planning System is a web application that generates personalized workout and nutrition plans based on user goals, medical history, injuries, and dietary restrictions. It uses a Large Language Model (LLM) to create draft plans that are refined by a rules engine to ensure safety and personalization.
 
 🎯 Features

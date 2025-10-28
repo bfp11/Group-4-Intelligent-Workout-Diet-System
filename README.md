@@ -22,48 +22,41 @@ The Intelligent Workout and Diet Planning System is a web application that gener
 📁 Folder Structure
 project-root/
 
-│
-
-├── frontend/           # UI components and pages
-
-├── backend/            # API routes, controllers, validation logic
-
-├── database/           # SQL scripts or schema definitions
-
-├── docs/               # Reports, SRS, UML diagrams, etc.
-
-├── .gitignore
-
-├── README.md
-
-└── LICENSE
+    │
+    ├── frontend/           # UI components and pages
+    ├── backend/            # API routes, controllers, validation logic
+    ├── database/           # SQL scripts or schema definitions
+    ├── docs/               # Reports, SRS, UML diagrams, etc.
+    ├── .gitignore
+    ├── README.md
+    └── LICENSE
 
 
 ⚙️ Installation & Setup
 
-Clone the repository
+    Clone the repository
 
-git clone https://github.com/YourUsername/intelligent-workout-diet-system.git
-cd intelligent-workout-diet-system
+    git clone https://github.com/YourUsername/intelligent-workout-diet-system.git
+    cd intelligent-workout-diet-system
 
-Install dependencies
-
-npm install
-
-Set up environment variables
-
-Create a .env file in the backend/ folder with:
-
-OPENAI_API_KEY=your_key_here
-SUPABASE_URL=your_url_here
-SUPABASE_KEY=your_key_here
-
-Run the app
-
-npm start
+    Install dependencies
+    
+    npm install
+    
+    Set up environment variables
+    
+    Create a .env file in the backend/ folder with:
+    
+    OPENAI_API_KEY=your_key_here
+    SUPABASE_URL=your_url_here
+    SUPABASE_KEY=your_key_here
+    
+    Run the app
+    
+    npm start
 
 👥 Team Members
--      Name	             Role	               Responsibilities
+- Name	          Role	              Responsibilities
 - Eathen Whittle	Database Developer	Schema design, Supabase integration
 - Micah Thompson	Frontend Developer	UI and user interaction
 - Jordan Trevino	Backend Developer	  API, LLM, and rules engine

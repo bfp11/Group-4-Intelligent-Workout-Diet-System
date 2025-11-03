@@ -37,7 +37,7 @@ project-root/
     Clone the repository
 
     git clone https://github.com/bfp11/group-4-intelligent-workout-diet-system.git
-    cd intelligent-workout-diet-system
+    cd group-4-intelligent-workout-diet-system
 
     Install dependencies
     

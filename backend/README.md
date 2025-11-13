@@ -18,14 +18,16 @@ You can run it locally and interact through FastAPI’s built-in Swagger UI at [
 
 ## Folder Structure
 
-backend/
-│
-├── main.py             # FastAPI entry point and API routes
-├── llm_service.py      # Handles OpenAI-based plan generation
-├── rules_engine.py     # Applies safety filters for allergies/injuries
-├── requirements.txt    # Python dependencies
-├── **init**.py         # Marks the folder as a package
-└── .env                # Contains your OpenAI API key (not tracked by Git)
+workout-meal-planner/
+├── backend/
+│   ├── __init__.py          # Empty file
+│   ├── main.py              # ← MODELS + ENDPOINTS go here
+│   ├── database.py          # ← Supabase connection
+│   ├── rules_engine.py      # ← Rules logic
+│   ├── llm_service.py       # ← OpenAI integration
+│   ├── requirements.txt     # ← Dependencies
+│   └── .env                 # ← Your API keys
+└── venv/                    # Virtual environment
 
 
 ## Prerequisites
@@ -73,7 +75,9 @@ pip install -r requirements.txt
 
 Create a `.env` file inside the `backend/` folder:
 
-OPENAI_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
+SUPABASE_URL=your_supabase_url_here
+SUPABASE_KEY=your_supabase_anon_key_here
 
 ### 7. Run the FastAPI server
 

@@ -14,7 +14,7 @@ numpy==2.3.4
 openai==2.6.1
 orjson==3.11.4
 packaging==25.0
-postgrest
+postgrest==0.10.0
 propcache==0.4.1
 pycparser==2.23
 pydantic==2.12.3

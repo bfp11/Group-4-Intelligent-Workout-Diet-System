@@ -1,56 +1,151 @@
+# backend/llm_service.py
+
 import os
 import json
+from typing import List, Dict, Any
+
 from openai import OpenAI
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
+from backend.database import get_supabase_client
+
+# Load env vars from project root
+load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+supabase = get_supabase_client()
 
-def generate_plan_from_llm(goal: str, allergies: list[str], injuries: list[str]) -> dict:
-    """Generates a personalized workout + diet plan using OpenAI"""
+
+def _safe_json_from_model_content(content: str) -> Dict[str, Any]:
+    """
+    Strip code fences if present and parse JSON safely.
+    """
+    text = content.strip()
+
+    # Remove ``` blocks if the model added them
+    if text.startswith("```"):
+        parts = text.split("```")
+        # Find the part that looks like JSON
+        for part in parts:
+            if "{" in part and "}" in part:
+                text = part.strip()
+                break
+
+    return json.loads(text)
+
+
+def get_available_foods_and_exercises() -> tuple[List[str], List[str]]:
+    """
+    Fetch available foods and exercises from Supabase to bias the LLM
+    toward items we actually support in the database.
+    """
+    foods: List[str] = []
+    exercises: List[str] = []
+
+    try:
+        foods_response = (
+            supabase.table("food_items")
+            .select("name")
+            .eq("is_active", True)
+            .execute()
+        )
+        exercises_response = (
+            supabase.table("exercise_items")
+            .select("name")
+            .eq("is_active", True)
+            .execute()
+        )
+
+        if foods_response.data:
+            foods = [f["name"] for f in foods_response.data]
+
+        if exercises_response.data:
+            exercises = [e["name"] for e in exercises_response.data]
+
+    except Exception as e:
+        print(f"Error fetching available items from Supabase: {e}")
+
+    # Fallbacks if DB is empty or unavailable
+    if not foods:
+        foods = ["Chicken Breast", "Salmon", "Tofu", "Brown Rice", "Quinoa", "Broccoli"]
+
+    if not exercises:
+        exercises = ["Squats", "Push-Ups", "Stationary Bike", "Planks", "Seated Row"]
+
+    return foods, exercises
+
+
+def generate_plan_from_llm(
+    goal: str, allergies: List[str], injuries: List[Dict[str, str]]
+) -> Dict[str, Any]:
+    """
+    Generates a personalized workout + diet plan using OpenAI.
+    Uses:
+      - user goal
+      - allergies
+      - injuries with severities
+      - available foods/exercises from Supabase
+    """
+
+    available_foods, available_exercises = get_available_foods_and_exercises()
+
+    allergy_text = ", ".join(allergies) if allergies else "none"
+    injury_descriptions = [
+        f"{i.get('name', '')} ({i.get('severity', 'moderate')})" for i in injuries
+    ]
+    injury_text = ", ".join(injury_descriptions) if injuries else "none"
+
+    foods_list = ", ".join(available_foods)
+    exercises_list = ", ".join(available_exercises)
 
     prompt = f"""
-    You are an AI fitness and nutrition assistant.
-    Respond ONLY with valid JSON — no Markdown or explanations.
-    Create a one-day workout and diet plan for a user whose goal is: {goal}.
-    Avoid foods with these allergies: {', '.join(allergies) or 'none'}.
-    Avoid exercises that are unsafe for: {', '.join(injuries) or 'none'}.
+You are an AI fitness and nutrition assistant.
 
-    The JSON should look like:
-    {{
-        "meals": [
-            {{"name": "Chicken Salad", "calories": 350}},
-            ...
-        ],
-        "workouts": [
-            {{"name": "Squats", "duration": "3 sets of 10"}},
-            ...
-        ]
-    }}
-    """
+Respond ONLY with valid JSON — no Markdown, no code fences, no explanations.
+
+Create a one-day workout and diet plan for a user whose goal is: "{goal}".
+
+- User allergies: {allergy_text}.
+- User injuries and severities: {injury_text}.
+
+IMPORTANT:
+- Try to primarily use foods from this list: {foods_list}
+- Try to primarily use exercises from this list: {exercises_list}
+- Avoid any foods that conflict with the allergies.
+- Avoid any exercises that would be unsafe given the injuries and severities.
+
+Return JSON with this exact structure:
+
+{{
+  "meals": [
+    {{ "name": "Grilled Chicken Breast", "calories": 350 }},
+    {{ "name": "Quinoa", "calories": 200 }}
+  ],
+  "workouts": [
+    {{ "name": "Seated Row", "duration": "3 sets of 10" }},
+    {{ "name": "Stationary Bike", "duration": "20 minutes" }}
+  ]
+}}
+
+Return ONLY the JSON.
+"""
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.7
+            temperature=0.7,
         )
 
-        content = response.choices[0].message.content.strip()
-        print("Raw LLM text:\n", content)
+        content = response.choices[0].message.content or ""
+        print("Raw LLM plan text:\n", content)
 
-        #Remove Markdown code fences if present
-        if content.startswith("```"):
-            content = content.split("```")
-            # find the JSON part (usually between ```json ... ```)
-            content = next((c for c in content if "{" in c and "}" in c), content[0])
-            content = content.strip()
+        plan = _safe_json_from_model_content(content)
 
-        plan = json.loads(content)
-
+        # Normalize field names
         if "exercises" in plan and "workouts" not in plan:
             plan["workouts"] = plan.pop("exercises")
+
         plan.setdefault("meals", [])
         plan.setdefault("workouts", [])
 
@@ -58,9 +153,134 @@ def generate_plan_from_llm(goal: str, allergies: list[str], injuries: list[str])
         return plan
 
     except json.JSONDecodeError as e:
-        print("JSON parsing failed:", e)
+        print("JSON parsing failed in generate_plan_from_llm:", e)
         return {"error": "Model did not return valid JSON", "meals": [], "workouts": []}
+    except Exception as e:
+        print("LLM generation failed in generate_plan_from_llm:", e)
+        return {"error": f"LLM generation failed: {e}", "meals": [], "workouts": []}
+
+
+def validate_exercise_safety(
+    exercise_name: str, injuries: List[Dict[str, str]], goal: str | None = None
+) -> bool:
+    """
+    Uses the LLM to check if an exercise is safe given the user's injuries.
+    Returns:
+      True  -> safe
+      False -> unsafe or uncertain
+    """
+    injury_text = ", ".join(
+        f"{i.get('name', '')} ({i.get('severity', 'moderate')})" for i in injuries
+    )
+
+    goal_text = f" The user's goal is '{goal}'." if goal else ""
+
+    prompt = f"""
+You are a certified physical therapist AI.
+
+The user has the following injuries: {injury_text}.{goal_text}
+Determine if the exercise "{exercise_name}" is safe to perform.
+
+Respond ONLY with one word: "safe" or "unsafe".
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+        )
+
+        answer = (response.choices[0].message.content or "").strip().lower()
+        print(f"LLM validation for '{exercise_name}': {answer}")
+        return answer.startswith("safe")
 
     except Exception as e:
-        print("LLM generation failed:", e)
-        return {"error": f"LLM generation failed: {e}", "meals": [], "workouts": []}
+        print(f"Error validating {exercise_name}:", e)
+        # On errors we act conservatively: treat as unsafe
+        return False
+
+
+def suggest_food_replacement(
+    item_name: str, allergen: str, goal: str | None = None
+) -> Dict[str, Any]:
+    """
+    Ask the LLM for a safe food replacement.
+    Returns a dict like: {"name": "...", "calories": 200}
+    """
+    goal_text = f" The user's overall goal is '{goal}'." if goal else ""
+
+    prompt = f"""
+You are a nutrition assistant.
+
+The user is allergic to "{allergen}". The meal "{item_name}" is not safe.
+Suggest a single safe replacement meal that:
+- avoids the allergen
+- is realistic for a normal person
+- supports the user's goal.{goal_text}
+
+Return ONLY a JSON object like:
+{{ "name": "Safe Meal Name", "calories": 400 }}
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+        )
+        content = response.choices[0].message.content or ""
+        print("Raw LLM food replacement text:\n", content)
+        data = _safe_json_from_model_content(content)
+        # Basic safety defaults
+        return {
+            "name": data.get("name", "Generic Safe Meal"),
+            "calories": data.get("calories", 300),
+        }
+    except Exception as e:
+        print("Error in suggest_food_replacement:", e)
+        return {"name": "Generic Safe Meal", "calories": 300}
+
+
+def suggest_exercise_replacement(
+    exercise_name: str, injuries: List[Dict[str, str]], goal: str | None = None
+) -> Dict[str, Any]:
+    """
+    Ask the LLM for a safe exercise replacement.
+    Returns a dict like: {"name": "...", "duration": "3 sets of 10"}
+    """
+    injury_text = ", ".join(
+        f"{i.get('name', '')} ({i.get('severity', 'moderate')})" for i in injuries
+    )
+    goal_text = f" The user's overall goal is '{goal}'." if goal else ""
+
+    prompt = f"""
+You are a physical therapist and strength coach.
+
+The user has these injuries: {injury_text}.
+The exercise "{exercise_name}" is not safe.
+
+Suggest ONE alternative exercise that:
+- is safe for these injuries
+- still helps the user work toward their goal.{goal_text}
+
+Return ONLY a JSON object like:
+{{ "name": "Safe Exercise", "duration": "3 sets of 12" }}
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+        )
+        content = response.choices[0].message.content or ""
+        print("Raw LLM exercise replacement text:\n", content)
+        data = _safe_json_from_model_content(content)
+        return {
+            "name": data.get("name", "Safe Alternative Exercise"),
+            "duration": data.get("duration", "3 sets of 10"),
+        }
+    except Exception as e:
+        print("Error in suggest_exercise_replacement:", e)
+        return {"name": "Safe Alternative Exercise", "duration": "3 sets of 10"}

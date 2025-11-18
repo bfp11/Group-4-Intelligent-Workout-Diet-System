@@ -1,9 +1,4 @@
 import { useState } from 'react'
-import { Routes, Route, Link } from "react-router-dom";
-import reactLogo from '../src/assets/react.svg'
-import backgroundImage from '../src/assets/workout_background.jpg'
-import viteLogo from '/vite.svg'
-import '../src/index.css'
 
 export default function App() {
   const [username, setUsername] = useState("");
@@ -40,8 +35,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[url('../src/assets/workout_background.jpg')] bg-cover bg-center">
-      <div className="w-full max-w-sm shrink-0 rounded-2xl bg-[#501214] p-6 shadow opacity-90">
+    <div className="min-h-screen flex items-center justify-center bg-[url('../public/workout_background.jpg')] bg-cover bg-center">
+      <div className="w-full max-w-sm shrink-0 rounded-2xl bg-[#501214] p-6 shadow opacity-90 hover:opacity-100 hover:cursor-pointer">
         <h1 className="text-xl font-semibold text-black">Sign in</h1>
         <p className="mt-1 text-sm text-black">
           Use your directory username and password.

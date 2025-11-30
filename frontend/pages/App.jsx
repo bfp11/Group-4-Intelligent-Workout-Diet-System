@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function App() {
   const [username, setUsername] = useState("");
@@ -6,6 +6,10 @@ export default function App() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    document.title = "Login Page | My App";
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();

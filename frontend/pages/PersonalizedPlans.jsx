@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../src/components/Navbar.jsx";
 import WorkoutCard from "../src/components/WorkoutCard.jsx";
 import MealCard from "../src/components/MealCard.jsx";
@@ -85,6 +85,11 @@ const meals = [
 export default function PersonalizedPlans() {
   const [selectedWorkout, setSelectedWorkout] = useState(workouts[0]);
   const [selectedMeal, setSelectedMeal] = useState(meals[0]);
+
+  useEffect(() => {
+    document.title = "Personalized Plans | My App";
+  }, []);
+
 
   return (
     <div className="min-h-screen bg-gray-100 text-black">

@@ -1,8 +1,9 @@
+// pages/PersonalizedPlans.jsx
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../src/components/Navbar.jsx";
 import WorkoutCard from "../src/components/WorkoutCard.jsx";
 import MealCard from "../src/components/MealCard.jsx";
-
 
 const workouts = [
   {
@@ -85,15 +86,80 @@ const meals = [
 export default function PersonalizedPlans() {
   const [selectedWorkout, setSelectedWorkout] = useState(workouts[0]);
   const [selectedMeal, setSelectedMeal] = useState(meals[0]);
+  const [user, setUser] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(true);
 
+  const navigate = useNavigate();
+
+  // Set document title
   useEffect(() => {
     document.title = "Personalized Plans | My App";
   }, []);
 
+  // Check backend session on mount
+  useEffect(() => {
+    async function checkSession() {
+      try {
+        const res = await fetch("http://localhost:8000/api/me", {
+          credentials: "include", // send session cookie
+        });
+        const data = await res.json();
+        if (!data.user) {
+          // no active session → send back to login
+          navigate("/", { replace: true });
+        } else {
+          setUser(data.user);
+        }
+      } catch (err) {
+        // any error → treat as not logged in
+        navigate("/", { replace: true });
+      } finally {
+        setCheckingSession(false);
+      }
+    }
+
+    checkSession();
+  }, [navigate]);
+
+  // Logout handler
+  async function handleLogout() {
+    try {
+      await fetch("http://localhost:8000/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (e) {
+      // ignore errors, we’ll still send user to login
+    } finally {
+      navigate("/", { replace: true });
+    }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 text-black">
+        Loading your plan…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 text-black">
       <Navbar />
+
+      {/* user info + logout */}
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 pt-4">
+        <p className="text-sm text-gray-600">
+          Logged in as{" "}
+          <span className="font-semibold">{user?.username}</span>
+        </p>
+        <button
+          onClick={handleLogout}
+          className="rounded-md bg-black px-3 py-1 text-xs font-medium text-white hover:bg-gray-900"
+        >
+          Logout
+        </button>
+      </div>
 
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 lg:flex-row">
         {/* LEFT: workout column */}
@@ -137,7 +203,11 @@ export default function PersonalizedPlans() {
 
           <div className="space-y-3">
             {meals.map((m) => (
-              <MealCard key={m.id} meal={m} onSelect={setSelectedMeal} />
+              <MealCard
+                key={m.id}
+                meal={m}
+                onSelect={setSelectedMeal}
+              />
             ))}
           </div>
 

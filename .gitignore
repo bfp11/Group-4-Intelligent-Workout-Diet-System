@@ -137,3 +137,27 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# ------------------------
+# Python / FastAPI backend
+# ------------------------
+
+# Virtual environments
+venv/
+backend/venv/
+**/venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build artifacts
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Environment files
+backend/.env

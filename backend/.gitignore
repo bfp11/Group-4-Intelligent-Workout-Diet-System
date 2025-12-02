@@ -1,0 +1,32 @@
+# Python cache / compiled files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+venv/
+.env/
+.venv/
+env/
+
+# IDE / editor junk
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Local databases (optional)
+*.sqlite3
+instance/
+
+# Logs
+*.log
+
+# ENVIRONMENT VARIABLES (secrets)
+.env
+.env.local
+.env.development
+.env.production
+.env.test

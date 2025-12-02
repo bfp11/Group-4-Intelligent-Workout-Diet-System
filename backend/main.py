@@ -1,13 +1,24 @@
 # backend/main.py
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Union, Dict, Any
 
-from backend.rules_engine import RulesEngine
-from backend.llm_service import generate_plan_from_llm
+from rules_engine import RulesEngine
+from llm_service import generate_plan_from_llm
 
 app = FastAPI(title="Workout & Diet Planner API")
+
+# Add CORS middleware to allow frontend requests
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],  # Frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 rules_engine = RulesEngine()
 
 
@@ -24,11 +35,33 @@ class PlanRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "Workout & Diet Planner API is running"}
+    return {
+        "message": "Workout & Diet Planner API is running",
+        "version": "1.0.0",
+        "status": "healthy"
+    }
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "api": "running"
+    }
 
 
 @app.post("/generate-plan")
 async def generate_plan(request: PlanRequest) -> Dict[str, Any]:
+    """
+    Generate a personalized workout and meal plan based on user input.
+    
+    Args:
+        request: PlanRequest containing goal, allergies, and injuries
+        
+    Returns:
+        Dictionary with safe_plan (meals, workouts) and replacements_made
+    """
     try:
         # 1. Normalize injuries into a consistent {name, severity} shape
         injuries: List[Dict[str, str]] = []
@@ -48,7 +81,11 @@ async def generate_plan(request: PlanRequest) -> Dict[str, Any]:
                     }
                 )
 
-        # 2. Generate initial plan from the LLM (already uses goal, allergies, injuries)
+        # 2. Generate initial plan from the LLM
+        print(f"Generating plan for goal: {request.goal}")
+        print(f"Allergies: {request.allergies}")
+        print(f"Injuries: {injuries}")
+        
         raw_plan = generate_plan_from_llm(
             goal=request.goal,
             allergies=request.allergies,
@@ -66,6 +103,8 @@ async def generate_plan(request: PlanRequest) -> Dict[str, Any]:
             injuries=injuries,
         )
 
+        print(f"Plan generated successfully with {len(safe_plan['meals'])} meals and {len(safe_plan['workouts'])} workouts")
+
         # 4. Return combined response
         return {
             "goal": request.goal,
@@ -79,4 +118,5 @@ async def generate_plan(request: PlanRequest) -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Error generating plan: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

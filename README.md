@@ -104,10 +104,6 @@ npm install
 ```
 
 ### 5. Run the Application
-```bash
-cd backend
-uvicorn main:app --reload
-```
 
 **Terminal 1 - Backend:**
 ```bash

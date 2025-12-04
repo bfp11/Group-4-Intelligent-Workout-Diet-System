@@ -31,6 +31,24 @@ export default function PersonalizedPlans() {
     document.title = "Personalized Plans | Workout & Diet Planner";
   }, []);
 
+  // Listen for navbar button clicks
+  useEffect(() => {
+    const handleShowDashboard = () => setShowForm(true);
+    const handleShowPlans = () => {
+      if (workouts.length > 0 && meals.length > 0) {
+        setShowForm(false);
+      }
+    };
+
+    window.addEventListener('showDashboard', handleShowDashboard);
+    window.addEventListener('showPlans', handleShowPlans);
+
+    return () => {
+      window.removeEventListener('showDashboard', handleShowDashboard);
+      window.removeEventListener('showPlans', handleShowPlans);
+    };
+  }, [workouts.length, meals.length]);
+
   // Logout handler
   async function handleLogout() {
     try {
@@ -136,8 +154,14 @@ export default function PersonalizedPlans() {
 
       {/* Header */}
       <div className="mx-auto max-w-6xl px-4 pt-2">
-        <h1 className="text-2xl font-bold">AI-Powered Workout & Meal Planner</h1>
-        <p className="text-sm text-gray-600">Get personalized plans based on your goals</p>
+        <h1 className="text-2xl font-bold">
+          {showForm ? "Dashboard" : "Your Personalized Plans"}
+        </h1>
+        <p className="text-sm text-gray-600">
+          {showForm 
+            ? "Generate personalized workout and meal plans" 
+            : `Plan generated for: ${goal}`}
+        </p>
       </div>
 
       {/* Show form if no plan generated yet */}

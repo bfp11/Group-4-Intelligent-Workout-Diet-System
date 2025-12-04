@@ -1,22 +1,51 @@
-export default function Navbar() {
-  return (
-    <header className="w-full border-b bg-white/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="h-8 w-8 rounded-full bg-black text-white flex items-center justify-center text-sm font-semibold">
-            WP
-          </span>
-          <span className="text-lg font-semibold tracking-tight text-black">
-            WorkoutPlan
-          </span>
-        </div>
+import { Link, useLocation } from "react-router-dom";
 
-        <nav className="flex items-center gap-6 text-sm text-gray-600">
-          <button className="hover:text-black">Dashboard</button>
-          <button className="hover:text-black">Plans</button>
-          <button className="hover:text-black">Profile</button>
-        </nav>
+export default function Navbar() {
+  const location = useLocation();
+
+  // Helper function to check if a link is active
+  const isActive = (path) => location.pathname === path;
+
+  return (
+    <nav className="bg-white shadow-sm border-b border-gray-200">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 justify-between items-center">
+          {/* Logo/Brand */}
+          <div className="flex items-center">
+            <Link to="/plans" className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-black text-white font-bold text-sm">
+                WP
+              </div>
+              <span className="text-lg font-semibold text-gray-900">
+                WorkoutPlan
+              </span>
+            </Link>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="flex items-center gap-1">
+            {/* Dashboard button */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('showDashboard'));
+              }}
+              className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+            >
+              Dashboard
+            </button>
+
+            {/* Plans button */}
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('showPlans'));
+              }}
+              className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+            >
+              Plans
+            </button>
+          </div>
+        </div>
       </div>
-    </header>
+    </nav>
   );
 }

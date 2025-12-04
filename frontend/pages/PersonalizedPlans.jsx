@@ -1,11 +1,14 @@
-// pages/PersonalizedPlans.jsx - Simplified without authentication
+// pages/PersonalizedPlans.jsx - With logout functionality
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Navbar from "../src/components/Navbar.jsx";
 import WorkoutCard from "../src/components/WorkoutCard.jsx";
 import MealCard from "../src/components/MealCard.jsx";
 import { generatePlan } from "../src/api.js";
 
 export default function PersonalizedPlans() {
+  const navigate = useNavigate();
+  
   // State for generated plans
   const [workouts, setWorkouts] = useState([]);
   const [meals, setMeals] = useState([]);
@@ -27,6 +30,20 @@ export default function PersonalizedPlans() {
   useEffect(() => {
     document.title = "Personalized Plans | Workout & Diet Planner";
   }, []);
+
+  // Logout handler
+  async function handleLogout() {
+    try {
+      await fetch("http://localhost:8000/api/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch (e) {
+      // ignore errors
+    } finally {
+      navigate("/", { replace: true });
+    }
+  }
 
   // Handle plan generation
   async function handleGeneratePlan(e) {
@@ -104,8 +121,21 @@ export default function PersonalizedPlans() {
     <div className="min-h-screen bg-gray-100 text-black">
       <Navbar />
 
+      {/* User info + logout button */}
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 pt-4 pb-2">
+        <p className="text-sm text-gray-600">
+          Welcome! You're logged in
+        </p>
+        <button
+          onClick={handleLogout}
+          className="rounded-md bg-black px-3 py-1 text-xs font-medium text-white hover:bg-gray-900 transition-colors"
+        >
+          Logout
+        </button>
+      </div>
+
       {/* Header */}
-      <div className="mx-auto max-w-6xl px-4 pt-4">
+      <div className="mx-auto max-w-6xl px-4 pt-2">
         <h1 className="text-2xl font-bold">AI-Powered Workout & Meal Planner</h1>
         <p className="text-sm text-gray-600">Get personalized plans based on your goals</p>
       </div>

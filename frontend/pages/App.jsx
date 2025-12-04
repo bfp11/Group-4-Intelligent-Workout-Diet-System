@@ -1,4 +1,4 @@
-// src/pages/Login.jsx
+// src/pages/Login.jsx - Updated for FastAPI backend
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -41,8 +41,7 @@ export default function Login() {
     setInfoMessage("");
 
     try {
-      const endpoint =
-        mode === "login" ? "/api/login" : "/api/signup";
+      const endpoint = mode === "login" ? "/api/login" : "/api/signup";
 
       const res = await fetch(`http://localhost:8000${endpoint}`, {
         method: "POST",
@@ -54,7 +53,7 @@ export default function Login() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.message || "Request failed");
+        throw new Error(data.detail || data.message || "Request failed");
       }
 
       if (mode === "login") {

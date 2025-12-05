@@ -7,10 +7,10 @@ from typing import List, Dict, Any
 from openai import OpenAI
 from dotenv import load_dotenv
 
-from backend.database import get_supabase_client
+from database import get_supabase_client
 
 # Load env vars from project root
-load_dotenv()
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 supabase = get_supabase_client()

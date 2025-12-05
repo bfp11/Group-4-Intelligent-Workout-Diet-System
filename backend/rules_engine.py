@@ -2,8 +2,8 @@
 
 from typing import List, Dict, Any, Optional
 
-from backend.database import get_supabase_client
-from backend.llm_service import (
+from database import get_supabase_client
+from llm_service import (
     validate_exercise_safety,
     suggest_food_replacement,
     suggest_exercise_replacement,

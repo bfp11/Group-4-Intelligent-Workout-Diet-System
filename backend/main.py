@@ -140,6 +140,16 @@ class SavePlanRequest(BaseModel):
     allergies: Optional[List[str]] = None
     injuries: Optional[List[str]] = None
 
+# Profile Models
+class UpdateProfileRequest(BaseModel):
+    name: Optional[str] = None
+    age: Optional[int] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    goal: Optional[str] = None
+    allergies: Optional[List[str]] = None
+    injuries: Optional[List[str]] = None
+
 # ============================================
 # AUTHENTICATION ENDPOINTS
 # ============================================
@@ -393,16 +403,20 @@ async def save_plan(request: SavePlanRequest, session_id: Optional[str] = Cookie
         
         # Save meals to plan_meals table
         for meal in request.meals:
-            supabase.table('plan_meals').insert({
+            meal_data = {
                 "plan_id": plan_id,
-                "meal_type": meal.get('timeOfDay', 'Anytime'),
+                "meal_type": meal.get('timeOfDay', meal.get('meal_type', 'Anytime')),
                 "name": meal.get('title', meal.get('name', 'Unnamed Meal')),
-                "calories": meal.get('calories', 0),
-                "protein": meal.get('protein', 0),
-                "carbs": meal.get('carbs', 0),
-                "fat": meal.get('fat', 0),
-                "was_replaced": False
-            }).execute()
+                "calories": int(meal.get('calories', 0)) if meal.get('calories') else 0,
+                "protein": int(meal.get('protein', 0)) if meal.get('protein') else 0,
+                "carbs": int(meal.get('carbs', 0)) if meal.get('carbs') else 0,
+                "fat": int(meal.get('fat', 0)) if meal.get('fat') else 0,
+                "was_replaced": meal.get('was_replaced', False)
+            }
+            
+            print(f"Saving meal: {meal_data}")  # Debug logging
+            
+            supabase.table('plan_meals').insert(meal_data).execute()
         
         # Save workouts to plan_workouts table
         for workout in request.workouts:
@@ -415,19 +429,22 @@ async def save_plan(request: SavePlanRequest, session_id: Optional[str] = Cookie
                 except:
                     duration_minutes = 30
             
-            supabase.table('plan_workouts').insert({
+            workout_data = {
                 "plan_id": plan_id,
                 "name": workout.get('title', workout.get('name', 'Unnamed Workout')),
                 "duration_minutes": duration_minutes,
                 "estimated_calories": workout.get('calories', 0),
-                "was_replaced": False
-            }).execute()
+                "was_replaced": workout.get('was_replaced', False)
+            }
+            
+            print(f"Saving workout: {workout_data}")  # Debug logging
+            
+            supabase.table('plan_workouts').insert(workout_data).execute()
+        
+        # Update user profile with the plan's goal, allergies, and injuries
         user_data = supabase.table('users').select('goal, allergies, injuries').eq('id', user_id).execute()
         
         if user_data.data:
-            current_user = user_data.data[0]
-            
-            # Update profile with the plan's goal, allergies, and injuries
             profile_update = {
                 "goal": request.goal
             }
@@ -493,7 +510,8 @@ async def delete_plan(plan_id: str, session_id: Optional[str] = Cookie(None)):
 @app.get("/api/plans")
 async def get_saved_plans(session_id: Optional[str] = Cookie(None)):
     """
-    Get all saved plans for the current user
+    Get all saved plans for the logged-in user with their meals and workouts
+    Enriches meal data with allergen information from food_items table
     """
     # Check authentication
     session_data = get_session(session_id)
@@ -504,21 +522,93 @@ async def get_saved_plans(session_id: Optional[str] = Cookie(None)):
     supabase = get_supabase_client()
     
     try:
-        # Get all plans for the user, ordered by newest first
-        plans = supabase.table('plans')\
-            .select('id, goal, created_at')\
+        # Get all plans for the user
+        plans_result = supabase.table('plans')\
+            .select('*')\
             .eq('user_id', user_id)\
             .order('created_at', desc=True)\
             .execute()
         
+        plans = []
+        
+        for plan in plans_result.data:
+            plan_id = plan['id']
+            
+            # Get meals for this plan
+            meals_result = supabase.table('plan_meals')\
+                .select('*')\
+                .eq('plan_id', plan_id)\
+                .execute()
+            
+            # Enrich meals with allergen info from food_items
+            enriched_meals = []
+            for meal in meals_result.data:
+                # Try to find matching food item in database
+                food_item = supabase.table('food_items')\
+                    .select('allergens')\
+                    .eq('name', meal['name'])\
+                    .execute()
+                
+                meal_data = {
+                    'name': meal['name'],
+                    'meal_type': meal['meal_type'],
+                    'calories': meal['calories'],
+                    'protein': meal['protein'],
+                    'carbs': meal['carbs'],
+                    'fat': meal['fat'],
+                    'was_replaced': meal['was_replaced'],
+                    'allergens': food_item.data[0]['allergens'] if food_item.data else []
+                }
+                enriched_meals.append(meal_data)
+            
+            # Get workouts for this plan
+            workouts_result = supabase.table('plan_workouts')\
+                .select('*')\
+                .eq('plan_id', plan_id)\
+                .execute()
+            
+            # Enrich workouts with exercise info from exercise_items
+            enriched_workouts = []
+            for workout in workouts_result.data:
+                # Try to find matching exercise item in database
+                exercise_item = supabase.table('exercise_items')\
+                    .select('category, difficulty_level, contraindications')\
+                    .eq('name', workout['name'])\
+                    .execute()
+                
+                workout_data = {
+                    'name': workout['name'],
+                    'duration_minutes': workout['duration_minutes'],
+                    'estimated_calories': workout['estimated_calories'],
+                    'was_replaced': workout['was_replaced'],
+                    'category': exercise_item.data[0]['category'] if exercise_item.data else None,
+                    'difficulty_level': exercise_item.data[0]['difficulty_level'] if exercise_item.data else None,
+                    'contraindications': exercise_item.data[0]['contraindications'] if exercise_item.data else []
+                }
+                enriched_workouts.append(workout_data)
+            
+            plans.append({
+                'id': plan['id'],
+                'goal': plan['goal'],
+                'created_at': plan['created_at'],
+                'meals': enriched_meals,
+                'workouts': enriched_workouts,
+                'meal_count': len(enriched_meals),
+                'workout_count': len(enriched_workouts)
+            })
+        
         return {
-            "plans": plans.data,
-            "count": len(plans.data)
+            'success': True,
+            'plans': plans
         }
     
     except Exception as e:
-        print(f"Error getting plans: {e}")
+        print(f"Error fetching plans: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# PROFILE ENDPOINTS
+# ============================================
 
 @app.get("/api/profile")
 async def get_profile(session_id: Optional[str] = Cookie(None)):
@@ -559,16 +649,6 @@ async def get_profile(session_id: Optional[str] = Cookie(None)):
     except Exception as e:
         print(f"Error getting profile: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-
-
-class UpdateProfileRequest(BaseModel):
-    name: Optional[str] = None
-    age: Optional[int] = None
-    height: Optional[float] = None
-    weight: Optional[float] = None
-    goal: Optional[str] = None
-    allergies: Optional[List[str]] = None
-    injuries: Optional[List[str]] = None
 
 
 @app.put("/api/profile")
@@ -618,7 +698,7 @@ async def update_profile(request: UpdateProfileRequest, session_id: Optional[str
     except Exception as e:
         print(f"Error updating profile: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 # ============================================
 # RUN SERVER
 # ============================================

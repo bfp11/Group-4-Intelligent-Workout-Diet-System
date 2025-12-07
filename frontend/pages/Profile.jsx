@@ -185,19 +185,6 @@ export default function Profile() {
     <div className="min-h-screen bg-gray-100 text-black">
       <Navbar />
 
-      {/* User info + logout button */}
-      <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-4 pb-2">
-        <p className="text-sm text-gray-600">
-          Welcome, {userData.name}!
-        </p>
-        <button
-          onClick={handleLogout}
-          className="rounded-md bg-black px-3 py-1 text-xs font-medium text-white hover:bg-gray-900 transition-colors"
-        >
-          Logout
-        </button>
-      </div>
-
       {/* Header */}
       <div className="mx-auto max-w-4xl px-4 pt-2 pb-6">
         <h1 className="text-2xl font-bold">Profile & Settings</h1>

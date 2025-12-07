@@ -222,38 +222,25 @@ export default function PersonalizedPlans() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 text-black">
-      <Navbar />
+  <div className="min-h-screen bg-gray-100 text-black">
+    <Navbar />
+    
+    {/* Header */}
+    <div className="mx-auto max-w-2xl px-4 pt-8">
+      <h1 className="text-2xl font-bold">
+        {showForm ? "Dashboard" : "Your Personalized Plans"}
+      </h1>
+      <p className="text-sm text-gray-600">
+        {showForm 
+          ? "Generate personalized workout and meal plans" 
+          : `Plan generated for: ${goal}`}
+      </p>
+    </div>
 
-      {/* User info + logout button */}
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 pt-4 pb-2">
-        <p className="text-sm text-gray-600">
-          Welcome! You're logged in
-        </p>
-        <button
-          onClick={handleLogout}
-          className="rounded-md bg-black px-3 py-1 text-xs font-medium text-white hover:bg-gray-900 transition-colors"
-        >
-          Logout
-        </button>
-      </div>
-
-      {/* Header */}
-      <div className="mx-auto max-w-6xl px-4 pt-2">
-        <h1 className="text-2xl font-bold">
-          {showForm ? "Dashboard" : "Your Personalized Plans"}
-        </h1>
-        <p className="text-sm text-gray-600">
-          {showForm 
-            ? "Generate personalized workout and meal plans" 
-            : `Plan generated for: ${goal}`}
-        </p>
-      </div>
-
-      {/* Show form if no plan generated yet */}
-      {showForm && (
-        <div className="mx-auto max-w-2xl px-4 py-8">
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
+    {/* Show form if no plan generated yet */}
+    {showForm && (
+      <div className="mx-auto max-w-2xl px-4 py-8">
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="text-2xl font-bold mb-4">Generate Your Personalized Plan</h2>
             <p className="text-sm text-gray-600 mb-6">
               Tell us about your goals, allergies, and any injuries so we can create a safe and effective plan for you.

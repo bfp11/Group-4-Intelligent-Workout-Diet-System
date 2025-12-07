@@ -261,10 +261,11 @@ class RulesEngine:
     ) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """
         For each workout:
-          - Use DB to check for contraindications
-          - Use severity-based keyword rules (e.g., severe knee)
-          - Ask LLM if exercise is safe
-          - Substitute with DB rule or LLM recommendation if unsafe
+        - Use DB to check for contraindications
+        - Use severity-based keyword rules (e.g., severe knee)
+        - Ask LLM if exercise is safe
+        - Substitute with DB rule or LLM recommendation if unsafe
+        - ENSURES NO DUPLICATE WORKOUTS in the final list
         """
         if not injuries:
             return workouts, []
@@ -273,6 +274,9 @@ class RulesEngine:
         replacements: List[Dict[str, Any]] = []
 
         injury_names = [i["name"] for i in injuries]
+        
+        # Track workout names to avoid duplicates
+        used_workout_names = set()
 
         for w in workouts:
             w_name = w.get("name", "")
@@ -329,35 +333,79 @@ class RulesEngine:
 
             # --- 4. Substitution if unsafe ---
             if unsafe and matched_injury_name:
-                # First try DB substitution
-                substitute = self.find_exercise_substitute(matched_injury_name)
-                if substitute:
-                    new_workout = {
-                        "name": substitute.get("name", "Safe Alternative Exercise"),
-                        "duration": w.get("duration", "3 sets of 10"),
-                        "category": substitute.get("category", ""),
-                    }
-                    safe_workouts.append(new_workout)
-                    replacements.append(
-                        {
-                            "replaced": w_name,
-                            "with": new_workout["name"],
-                            "reason": f"{matched_injury_name} contraindication (DB or rules)",
-                        }
-                    )
-                else:
+                # Try to find a replacement that's not already in the list
+                max_attempts = 5
+                replacement_found = False
+                
+                for attempt in range(max_attempts):
+                    # First try DB substitution
+                    if attempt == 0:
+                        substitute = self.find_exercise_substitute(matched_injury_name)
+                        if substitute:
+                            new_name = substitute.get("name", "Safe Alternative Exercise")
+                            if new_name.lower() not in used_workout_names:
+                                new_workout = {
+                                    "name": new_name,
+                                    "duration": w.get("duration", "3 sets of 10"),
+                                    "category": substitute.get("category", ""),
+                                    "estimated_calories": substitute.get("estimated_calories_per_minute", 5) * 30,  # Estimate
+                                }
+                                safe_workouts.append(new_workout)
+                                used_workout_names.add(new_name.lower())
+                                replacements.append(
+                                    {
+                                        "replaced": w_name,
+                                        "with": new_workout["name"],
+                                        "reason": f"{matched_injury_name} contraindication (DB substitution)",
+                                    }
+                                )
+                                replacement_found = True
+                                break
+                    
                     # Ask the LLM for a replacement
                     llm_sub = suggest_exercise_replacement(w_name, injuries, goal)
-                    safe_workouts.append(llm_sub)
+                    llm_name = llm_sub.get("name", "Safe Alternative Exercise")
+                    
+                    # Check if this replacement is already used
+                    if llm_name.lower() not in used_workout_names:
+                        safe_workouts.append(llm_sub)
+                        used_workout_names.add(llm_name.lower())
+                        replacements.append(
+                            {
+                                "replaced": w_name,
+                                "with": llm_sub["name"],
+                                "reason": f"{matched_injury_name} contraindication (LLM substitution)",
+                            }
+                        )
+                        replacement_found = True
+                        break
+                    else:
+                        print(f"Attempt {attempt + 1}: Replacement '{llm_name}' already used, retrying...")
+                
+                # If we couldn't find a unique replacement after all attempts, use a generic fallback
+                if not replacement_found:
+                    fallback_name = f"Alternative Exercise {len(safe_workouts) + 1}"
+                    fallback_workout = {
+                        "name": fallback_name,
+                        "duration": w.get("duration", "3 sets of 10"),
+                        "estimated_calories": 150,
+                    }
+                    safe_workouts.append(fallback_workout)
+                    used_workout_names.add(fallback_name.lower())
                     replacements.append(
                         {
                             "replaced": w_name,
-                            "with": llm_sub["name"],
-                            "reason": f"{matched_injury_name} contraindication (LLM substitution)",
+                            "with": fallback_name,
+                            "reason": f"{matched_injury_name} contraindication (fallback)",
                         }
                     )
             else:
-                safe_workouts.append(w)
+                # Exercise is safe, but check if we already have it
+                if w_name.lower() not in used_workout_names:
+                    safe_workouts.append(w)
+                    used_workout_names.add(w_name.lower())
+                else:
+                    print(f"Skipping duplicate safe workout: {w_name}")
 
         return safe_workouts, replacements
 

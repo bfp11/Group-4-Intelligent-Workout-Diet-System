@@ -131,6 +131,15 @@ class PlanRequest(BaseModel):
     allergies: List[str] = []
     injuries: Union[List[str], List[Injury]] = []
 
+# Save Plan Model
+class SavePlanRequest(BaseModel):
+    goal: str
+    meals: List[Dict[str, Any]]
+    workouts: List[Dict[str, Any]]
+    replacements: Optional[Dict[str, Any]] = None
+    allergies: Optional[List[str]] = None
+    injuries: Optional[List[str]] = None
+
 # ============================================
 # AUTHENTICATION ENDPOINTS
 # ============================================
@@ -329,7 +338,287 @@ async def generate_plan(request: PlanRequest) -> Dict[str, Any]:
         print(f"Error generating plan: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ============================================
+# SAVE PLAN ENDPOINTS
+# ============================================
 
+@app.post("/api/save-plan")
+async def save_plan(request: SavePlanRequest, session_id: Optional[str] = Cookie(None)):
+    """
+    Save a workout and meal plan for the logged-in user.
+    Maximum 5 plans per user.
+    Also updates user's profile with goal, allergies, and injuries.
+    """
+    # Check authentication
+    session_data = get_session(session_id)
+    if not session_data:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_id = session_data["user_id"]
+    supabase = get_supabase_client()
+    
+    try:
+        # Check how many plans the user currently has
+        existing_plans = supabase.table('plans')\
+            .select('id, created_at, goal')\
+            .eq('user_id', user_id)\
+            .order('created_at', desc=False)\
+            .execute()
+        
+        if len(existing_plans.data) >= 5:
+            # Return error indicating they need to delete oldest
+            oldest_plan = existing_plans.data[0]
+            return {
+                "success": False,
+                "error": "max_plans_reached",
+                "message": "You have reached the maximum of 5 saved plans",
+                "oldest_plan": {
+                    "id": oldest_plan['id'],
+                    "goal": oldest_plan['goal'],
+                    "created_at": oldest_plan['created_at']
+                }
+            }
+        
+        # Create the plan
+        plan_result = supabase.table('plans').insert({
+            "user_id": user_id,
+            "goal": request.goal,
+            "created_at": datetime.now().isoformat()
+        }).execute()
+        
+        if not plan_result.data:
+            raise HTTPException(status_code=500, detail="Failed to create plan")
+        
+        plan_id = plan_result.data[0]['id']
+        
+        # Save meals to plan_meals table
+        for meal in request.meals:
+            supabase.table('plan_meals').insert({
+                "plan_id": plan_id,
+                "meal_type": meal.get('timeOfDay', 'Anytime'),
+                "name": meal.get('title', meal.get('name', 'Unnamed Meal')),
+                "calories": meal.get('calories', 0),
+                "protein": meal.get('protein', 0),
+                "carbs": meal.get('carbs', 0),
+                "fat": meal.get('fat', 0),
+                "was_replaced": False
+            }).execute()
+        
+        # Save workouts to plan_workouts table
+        for workout in request.workouts:
+            # Extract duration in minutes from duration string (e.g., "30 min" -> 30)
+            duration_str = workout.get('duration', '30 min')
+            duration_minutes = 30  # default
+            if 'min' in duration_str:
+                try:
+                    duration_minutes = int(duration_str.split()[0])
+                except:
+                    duration_minutes = 30
+            
+            supabase.table('plan_workouts').insert({
+                "plan_id": plan_id,
+                "name": workout.get('title', workout.get('name', 'Unnamed Workout')),
+                "duration_minutes": duration_minutes,
+                "estimated_calories": workout.get('calories', 0),
+                "was_replaced": False
+            }).execute()
+        user_data = supabase.table('users').select('goal, allergies, injuries').eq('id', user_id).execute()
+        
+        if user_data.data:
+            current_user = user_data.data[0]
+            
+            # Update profile with the plan's goal, allergies, and injuries
+            profile_update = {
+                "goal": request.goal
+            }
+            
+            # Only update allergies/injuries if they were part of the plan generation
+            if hasattr(request, 'allergies') and request.allergies is not None:
+                profile_update['allergies'] = request.allergies
+            if hasattr(request, 'injuries') and request.injuries is not None:
+                profile_update['injuries'] = request.injuries
+            
+            supabase.table('users').update(profile_update).eq('id', user_id).execute()
+        
+        return {
+            "success": True,
+            "message": "Plan saved successfully",
+            "plan_id": plan_id
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error saving plan: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/plans/{plan_id}")
+async def delete_plan(plan_id: str, session_id: Optional[str] = Cookie(None)):
+    """
+    Delete a specific plan (and its associated meals/workouts).
+    Due to ON DELETE CASCADE, meals and workouts will be automatically deleted.
+    """
+    # Check authentication
+    session_data = get_session(session_id)
+    if not session_data:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_id = session_data["user_id"]
+    supabase = get_supabase_client()
+    
+    try:
+        # Verify the plan belongs to this user
+        plan = supabase.table('plans')\
+            .select('id')\
+            .eq('id', plan_id)\
+            .eq('user_id', user_id)\
+            .execute()
+        
+        if not plan.data:
+            raise HTTPException(status_code=404, detail="Plan not found or access denied")
+        
+        # Delete the plan (meals and workouts will cascade delete automatically)
+        supabase.table('plans').delete().eq('id', plan_id).execute()
+        
+        return {"success": True, "message": "Plan deleted successfully"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting plan: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/plans")
+async def get_saved_plans(session_id: Optional[str] = Cookie(None)):
+    """
+    Get all saved plans for the current user
+    """
+    # Check authentication
+    session_data = get_session(session_id)
+    if not session_data:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_id = session_data["user_id"]
+    supabase = get_supabase_client()
+    
+    try:
+        # Get all plans for the user, ordered by newest first
+        plans = supabase.table('plans')\
+            .select('id, goal, created_at')\
+            .eq('user_id', user_id)\
+            .order('created_at', desc=True)\
+            .execute()
+        
+        return {
+            "plans": plans.data,
+            "count": len(plans.data)
+        }
+    
+    except Exception as e:
+        print(f"Error getting plans: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/profile")
+async def get_profile(session_id: Optional[str] = Cookie(None)):
+    """
+    Get the current user's profile data
+    """
+    # Check authentication
+    session_data = get_session(session_id)
+    if not session_data:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_id = session_data["user_id"]
+    supabase = get_supabase_client()
+    
+    try:
+        # Get user data
+        result = supabase.table('users').select('*').eq('id', user_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user = result.data[0]
+        
+        return {
+            "id": user['id'],
+            "name": user['name'],
+            "email": user['email'],
+            "age": user.get('age'),
+            "height": user.get('height'),
+            "weight": user.get('weight'),
+            "goal": user.get('goal'),
+            "allergies": user.get('allergies', []),
+            "injuries": user.get('injuries', [])
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting profile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class UpdateProfileRequest(BaseModel):
+    name: Optional[str] = None
+    age: Optional[int] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    goal: Optional[str] = None
+    allergies: Optional[List[str]] = None
+    injuries: Optional[List[str]] = None
+
+
+@app.put("/api/profile")
+async def update_profile(request: UpdateProfileRequest, session_id: Optional[str] = Cookie(None)):
+    """
+    Update the current user's profile data
+    """
+    # Check authentication
+    session_data = get_session(session_id)
+    if not session_data:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_id = session_data["user_id"]
+    supabase = get_supabase_client()
+    
+    try:
+        # Build update dict with only provided fields
+        update_data = {}
+        if request.name is not None:
+            update_data['name'] = request.name
+        if request.age is not None:
+            update_data['age'] = request.age
+        if request.height is not None:
+            update_data['height'] = request.height
+        if request.weight is not None:
+            update_data['weight'] = request.weight
+        if request.goal is not None:
+            update_data['goal'] = request.goal
+        if request.allergies is not None:
+            update_data['allergies'] = request.allergies
+        if request.injuries is not None:
+            update_data['injuries'] = request.injuries
+        
+        # Update user data
+        result = supabase.table('users').update(update_data).eq('id', user_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to update profile")
+        
+        return {
+            "success": True,
+            "message": "Profile updated successfully"
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating profile: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
 # ============================================
 # RUN SERVER
 # ============================================

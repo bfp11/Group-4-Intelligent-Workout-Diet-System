@@ -1,7 +1,8 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 export default function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Helper function to check if a link is active
   const isActive = (path) => location.pathname === path;
@@ -27,7 +28,13 @@ export default function Navbar() {
             {/* Dashboard button */}
             <button
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('showDashboard'));
+                // If we're already on /plans, trigger the event
+                if (location.pathname === '/plans') {
+                  window.dispatchEvent(new CustomEvent('showDashboard'));
+                } else {
+                  // Otherwise, navigate to /plans (which shows the form by default)
+                  navigate('/plans');
+                }
               }}
               className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
             >
@@ -37,12 +44,30 @@ export default function Navbar() {
             {/* Plans button */}
             <button
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('showPlans'));
+                // If we're already on /plans, trigger the event
+                if (location.pathname === '/plans') {
+                  window.dispatchEvent(new CustomEvent('showPlans'));
+                } else {
+                  // Otherwise, navigate to /plans
+                  navigate('/plans');
+                }
               }}
               className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
             >
               Plans
             </button>
+
+            {/* Profile Link */}
+            <Link
+              to="/profile"
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive('/profile')
+                  ? 'bg-gray-100 text-gray-900'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              }`}
+            >
+              Profile
+            </Link>
           </div>
         </div>
       </div>

@@ -2,13 +2,13 @@
 
 Group 4's project repository for the Intelligent Workout and Diet Planning System — a health and wellness web app that generates personalized workout and nutrition plans using AI and safety-based rules.
 
-## 📋 Overview
+## Overview
 
 The Intelligent Workout and Diet Planning System is a web application that generates personalized workout and nutrition plans based on user goals, medical history, injuries, and dietary restrictions. It uses a Large Language Model (LLM) to create draft plans that are refined by a rules engine to ensure safety and personalization.
 
 The system features real-time AI plan generation, automatic safety checks for allergies and injuries, and smart substitution recommendations powered by OpenAI GPT-4 and Supabase.
 
-## 🎯 Features
+## Features
 
 - **AI-Powered Plan Generation** – Creates personalized workouts and meals using OpenAI GPT-4o-mini
 - **Safety-First Design** – Automatic detection and replacement of unsafe foods and exercises
@@ -18,7 +18,7 @@ The system features real-time AI plan generation, automatic safety checks for al
 - **Modern UI** – Clean, responsive React interface with Tailwind CSS
 - **Persistent Storage** – Supabase PostgreSQL database for all data
 
-## 🏗️ System Architecture
+## System Architecture
 
 1. **Frontend (React + Vite)** – User interface for input and plan display
 2. **Backend (FastAPI)** – Handles requests, validation, and business logic
@@ -26,7 +26,7 @@ The system features real-time AI plan generation, automatic safety checks for al
 4. **LLM Integration (OpenAI API)** – Generates draft plans for review
 5. **Rules Engine** – Checks and filters unsafe or invalid recommendations
 
-## 📁 Folder Structure
+## Folder Structure
 
 ```
 Group-4-Intelligent-Workout-Diet-System/
@@ -39,6 +39,9 @@ Group-4-Intelligent-Workout-Diet-System/
 │   └── pages/             # Page components
 │
 ├── backend/               # FastAPI backend
+├── utils/
+│   │   ├── __init__.py/  #
+│   │   └── images.py/    # Image endpoints
 │   ├── main.py           # API routes and endpoints
 │   ├── database.py       # Supabase connection
 │   ├── rules_engine.py   # Safety rules and substitution logic
@@ -51,7 +54,7 @@ Group-4-Intelligent-Workout-Diet-System/
 └── LICENSE
 ```
 
-## ⚙️ Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 - Python 3.8+
@@ -63,7 +66,7 @@ Group-4-Intelligent-Workout-Diet-System/
 ```bash
 git clone https://github.com/bfp11/Group-4-Intelligent-Workout-Diet-System.git
 cd Group-4-Intelligent-Workout-Diet-System
-git checkout full-project
+git checkout main
 ```
 
 ### 2. Set up Supabase Database
@@ -121,7 +124,7 @@ npm run dev
 
 Open your browser to: **http://localhost:5173/plans**
 
-## 🎮 Usage
+## Usage
 
 1. Navigate to http://localhost:5173/plans
 2. Fill out the form:
@@ -131,7 +134,7 @@ Open your browser to: **http://localhost:5173/plans**
 3. Click **"Generate Plan"**
 4. View your personalized workout and meal plan with safety replacements
 
-## 👥 Team Members
+## Team Members
 
 | Name | Role | Responsibilities |
 |------|------|------------------|
@@ -140,7 +143,7 @@ Open your browser to: **http://localhost:5173/plans**
 | Jordan Trevino | Backend Developer | API development, LLM integration, rules engine |
 | Erick Bardales | Project Manager | Documentation, coordination, testing |
 
-## 🧩 Tech Stack
+## Tech Stack
 
 ### Frontend
 - **Framework:** React 19 with Vite
@@ -162,7 +165,7 @@ Open your browser to: **http://localhost:5173/plans**
 - **OpenAI API** – GPT-4o-mini for plan generation
 - **Supabase API** – Database and authentication
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### Backend (Port 8000)
 
@@ -183,7 +186,7 @@ curl -X POST "http://localhost:8000/generate-plan" \
   }'
 ```
 
-## 🗄️ Database Schema
+## Database Schema
 
 ### Key Tables
 
@@ -195,7 +198,7 @@ curl -X POST "http://localhost:8000/generate-plan" \
 - **plan_meals** – Individual meals within plans
 - **plan_workouts** – Individual workouts within plans
 
-## 🎯 How It Works
+## How It Works
 
 1. **User Input** – User fills form with fitness goal, allergies, and injuries
 2. **AI Generation** – Backend sends request to OpenAI GPT-4o-mini with available foods/exercises
@@ -203,7 +206,7 @@ curl -X POST "http://localhost:8000/generate-plan" \
 4. **Smart Substitutions** – Unsafe items replaced using database rules or AI recommendations
 5. **Response** – Safe plan returned with detailed replacement tracking
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Backend Issues
 
@@ -229,7 +232,7 @@ curl -X POST "http://localhost:8000/generate-plan" \
 - Ensure both backend and frontend are running
 - Check CORS is enabled in `backend/main.py`
 
-## 🧪 Testing
+## Testing
 
 ### Manual Testing
 1. Start both backend and frontend servers
@@ -242,42 +245,11 @@ Visit http://127.0.0.1:8000/docs for interactive API documentation
 
 ---
 
-## 🚀 Future Improvements
+## Future Improvements
 
-- **User Authentication** – Add login and profile management
-- **Plan History** – Save and view past generated plans
 - **Progress Tracking** – Monitor user fitness and nutrition progress over time
 - **Analytics Dashboard** – Visualize trends and achievements
-- **Wearable Integration** – Connect with fitness trackers
 - **Mobile App** – Native iOS and Android applications
 - **Social Features** – Share plans and compete with friends
 - **Meal Prep Guides** – Detailed cooking instructions
 - **Video Tutorials** – Exercise demonstration videos
-
-## 📝 Known Limitations
-
-- No user authentication (planned for future)
-- Plans not persisted to user history yet
-- Limited food and exercise database (15 of each)
-- Substitution rules need expansion for more variety
-- No mobile optimization yet
-
-## 🤝 Contributing
-
-This is a CS4398 Software Engineering course project by Group 4.
-
-### Development Workflow
-
-1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Make your changes and test locally
-3. Commit: `git commit -m "Description of changes"`
-4. Push: `git push origin feature/your-feature`
-5. Create a Pull Request on GitHub
-
-## 🎓 Learning Resources
-
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [React Documentation](https://react.dev/)
-- [Supabase Documentation](https://supabase.com/docs)
-- [OpenAI API Documentation](https://platform.openai.com/docs)
-- [Tailwind CSS](https://tailwindcss.com/docs)

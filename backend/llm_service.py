@@ -115,7 +115,7 @@ IMPORTANT:
 - Avoid any exercises that would be unsafe given the injuries and severities.
 
 CRITICAL WORKOUT REQUIREMENTS - READ CAREFULLY:
-- Generate EXACTLY 4-6 workouts
+- Generate anywhere from 3 to 6 workouts
 - ABSOLUTE RULE: NO TWO WORKOUTS CAN HAVE THE SAME NAME
 - Each workout MUST target a DIFFERENT muscle group or movement pattern
 - Mix workout types: at least 1 cardio, at least 1 strength, at least 1 core/flexibility
@@ -124,7 +124,7 @@ CRITICAL WORKOUT REQUIREMENTS - READ CAREFULLY:
 - If you're about to repeat a workout, STOP and choose a completely different exercise instead
 
 CRITICAL MEAL REQUIREMENTS:
-- Generate EXACTLY 4-6 meals
+- Generate anywhere from 3 to 6 meals
 - ABSOLUTE RULE: NO TWO MEALS CAN HAVE THE SAME NAME
 - Vary the meals: breakfast items, lunch items, dinner items, snacks
 - INVALID example (DO NOT DO THIS): Chicken Breast, Chicken Breast, Chicken Breast

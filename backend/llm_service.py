@@ -114,18 +114,89 @@ IMPORTANT:
 - Avoid any foods that conflict with the allergies.
 - Avoid any exercises that would be unsafe given the injuries and severities.
 
+CRITICAL WORKOUT REQUIREMENTS - READ CAREFULLY:
+- Generate anywhere from 3 to 6 workouts
+- ABSOLUTE RULE: NO TWO WORKOUTS CAN HAVE THE SAME NAME
+- Each workout MUST target a DIFFERENT muscle group or movement pattern
+- Mix workout types: at least 1 cardio, at least 1 strength, at least 1 core/flexibility
+- Examples of DIFFERENT workouts: Push-Ups, Squats, Stationary Bike, Plank, Lunges, Rowing Machine
+- INVALID example (DO NOT DO THIS): Dumbbell Shoulder Press, Dumbbell Shoulder Press, Dumbbell Shoulder Press
+- If you're about to repeat a workout, STOP and choose a completely different exercise instead
+
+CRITICAL MEAL REQUIREMENTS:
+- Generate anywhere from 3 to 6 meals
+- ABSOLUTE RULE: NO TWO MEALS CAN HAVE THE SAME NAME
+- Vary the meals: breakfast items, lunch items, dinner items, snacks
+- INVALID example (DO NOT DO THIS): Chicken Breast, Chicken Breast, Chicken Breast
+
 Return JSON with this exact structure:
 
 {{
   "meals": [
-    {{ "name": "Grilled Chicken Breast", "calories": 350 }},
-    {{ "name": "Quinoa", "calories": 200 }}
+    {{ 
+      "name": "Scrambled Eggs with Spinach", 
+      "calories": 250,
+      "protein": 18,
+      "carbs": 5,
+      "fat": 15
+    }},
+    {{ 
+      "name": "Grilled Chicken Salad", 
+      "calories": 350,
+      "protein": 35,
+      "carbs": 20,
+      "fat": 12
+    }},
+    {{ 
+      "name": "Quinoa Bowl with Vegetables", 
+      "calories": 300,
+      "protein": 12,
+      "carbs": 45,
+      "fat": 8
+    }},
+    {{ 
+      "name": "Greek Yogurt with Berries", 
+      "calories": 150,
+      "protein": 15,
+      "carbs": 20,
+      "fat": 2
+    }}
   ],
   "workouts": [
-    {{ "name": "Seated Row", "duration": "3 sets of 10" }},
-    {{ "name": "Stationary Bike", "duration": "20 minutes" }}
+    {{ 
+      "name": "Push-Ups", 
+      "duration": "3 sets of 12",
+      "estimated_calories": 100
+    }},
+    {{ 
+      "name": "Squats", 
+      "duration": "3 sets of 15",
+      "estimated_calories": 120
+    }},
+    {{ 
+      "name": "Stationary Bike", 
+      "duration": "20 minutes",
+      "estimated_calories": 200
+    }},
+    {{ 
+      "name": "Plank", 
+      "duration": "3 sets of 45 seconds",
+      "estimated_calories": 75
+    }}
   ]
 }}
+
+VERIFICATION BEFORE RESPONDING:
+- Count your workouts - do any have the exact same name? If YES, fix it!
+- Count your meals - do any have the exact same name? If YES, fix it!
+- Are you mixing cardio and strength? If NO, add variety!
+
+FINAL REQUIREMENTS:
+- Each meal MUST include: name, calories (integer), protein (grams as integer), carbs (grams as integer), fat (grams as integer)
+- Each workout MUST include: name, duration (string), estimated_calories (integer)
+- Provide realistic nutritional values based on typical serving sizes
+- VERIFY: Every workout name is different from every other workout name
+- VERIFY: Every meal name is different from every other meal name
 
 Return ONLY the JSON.
 """
@@ -134,7 +205,7 @@ Return ONLY the JSON.
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
+            temperature=1.0,  # Increased for more variety
         )
 
         content = response.choices[0].message.content or ""
@@ -148,6 +219,44 @@ Return ONLY the JSON.
 
         plan.setdefault("meals", [])
         plan.setdefault("workouts", [])
+
+        # Remove duplicate workouts (keep first occurrence)
+        seen_workout_names = set()
+        unique_workouts = []
+        original_workout_count = len(plan["workouts"])
+        for workout in plan["workouts"]:
+            workout_name = workout.get("name", "").lower()
+            if workout_name and workout_name not in seen_workout_names:
+                seen_workout_names.add(workout_name)
+                unique_workouts.append(workout)
+
+        plan["workouts"] = unique_workouts
+        print(f"Original workout count: {original_workout_count}, After deduplication: {len(unique_workouts)}")
+
+        # Remove duplicate meals (keep first occurrence)
+        seen_meal_names = set()
+        unique_meals = []
+        original_meal_count = len(plan["meals"])
+        for meal in plan["meals"]:
+            meal_name = meal.get("name", "").lower()
+            if meal_name and meal_name not in seen_meal_names:
+                seen_meal_names.add(meal_name)
+                unique_meals.append(meal)
+
+        plan["meals"] = unique_meals
+        print(f"Original meal count: {original_meal_count}, After deduplication: {len(unique_meals)}")
+
+        # Ensure all meals have nutritional info
+        for meal in plan["meals"]:
+            meal.setdefault("calories", 0)
+            meal.setdefault("protein", 0)
+            meal.setdefault("carbs", 0)
+            meal.setdefault("fat", 0)
+
+        # Ensure all workouts have required fields
+        for workout in plan["workouts"]:
+            workout.setdefault("duration", "30 minutes")
+            workout.setdefault("estimated_calories", 200)
 
         print("Parsed Plan:", json.dumps(plan, indent=2))
         return plan
@@ -206,7 +315,7 @@ def suggest_food_replacement(
 ) -> Dict[str, Any]:
     """
     Ask the LLM for a safe food replacement.
-    Returns a dict like: {"name": "...", "calories": 200}
+    Returns a dict like: {"name": "...", "calories": 200, "protein": 20, "carbs": 30, "fat": 10}
     """
     goal_text = f" The user's overall goal is '{goal}'." if goal else ""
 
@@ -220,7 +329,15 @@ Suggest a single safe replacement meal that:
 - supports the user's goal.{goal_text}
 
 Return ONLY a JSON object like:
-{{ "name": "Safe Meal Name", "calories": 400 }}
+{{ 
+  "name": "Safe Meal Name", 
+  "calories": 400,
+  "protein": 25,
+  "carbs": 30,
+  "fat": 10
+}}
+
+Include realistic nutritional values (protein, carbs, fat in grams).
 """
 
     try:
@@ -236,10 +353,19 @@ Return ONLY a JSON object like:
         return {
             "name": data.get("name", "Generic Safe Meal"),
             "calories": data.get("calories", 300),
+            "protein": data.get("protein", 20),
+            "carbs": data.get("carbs", 30),
+            "fat": data.get("fat", 10),
         }
     except Exception as e:
         print("Error in suggest_food_replacement:", e)
-        return {"name": "Generic Safe Meal", "calories": 300}
+        return {
+            "name": "Generic Safe Meal", 
+            "calories": 300,
+            "protein": 20,
+            "carbs": 30,
+            "fat": 10,
+        }
 
 
 def suggest_exercise_replacement(
@@ -247,7 +373,7 @@ def suggest_exercise_replacement(
 ) -> Dict[str, Any]:
     """
     Ask the LLM for a safe exercise replacement.
-    Returns a dict like: {"name": "...", "duration": "3 sets of 10"}
+    Returns a dict like: {"name": "...", "duration": "3 sets of 10", "estimated_calories": 150}
     """
     injury_text = ", ".join(
         f"{i.get('name', '')} ({i.get('severity', 'moderate')})" for i in injuries
@@ -265,7 +391,13 @@ Suggest ONE alternative exercise that:
 - still helps the user work toward their goal.{goal_text}
 
 Return ONLY a JSON object like:
-{{ "name": "Safe Exercise", "duration": "3 sets of 12" }}
+{{ 
+  "name": "Safe Exercise", 
+  "duration": "3 sets of 12",
+  "estimated_calories": 150
+}}
+
+Include estimated calories burned.
 """
 
     try:
@@ -280,7 +412,12 @@ Return ONLY a JSON object like:
         return {
             "name": data.get("name", "Safe Alternative Exercise"),
             "duration": data.get("duration", "3 sets of 10"),
+            "estimated_calories": data.get("estimated_calories", 150),
         }
     except Exception as e:
         print("Error in suggest_exercise_replacement:", e)
-        return {"name": "Safe Alternative Exercise", "duration": "3 sets of 10"}
+        return {
+            "name": "Safe Alternative Exercise", 
+            "duration": "3 sets of 10",
+            "estimated_calories": 150,
+        }

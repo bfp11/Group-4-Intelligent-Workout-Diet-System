@@ -1,4 +1,4 @@
-// pages/PersonalizedPlans.jsx - With logout functionality
+// pages/PersonalizedPlans.jsx - With logout, save plan functionality, and database images
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../src/components/Navbar.jsx";
@@ -26,6 +26,12 @@ export default function PersonalizedPlans() {
   const [error, setError] = useState("");
   const [replacements, setReplacements] = useState(null);
 
+  // State for save plan feature
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [showMaxPlansModal, setShowMaxPlansModal] = useState(false);
+  const [oldestPlan, setOldestPlan] = useState(null);
+
   // Set document title
   useEffect(() => {
     document.title = "Personalized Plans | Workout & Diet Planner";
@@ -48,6 +54,40 @@ export default function PersonalizedPlans() {
       window.removeEventListener('showPlans', handleShowPlans);
     };
   }, [workouts.length, meals.length]);
+
+  // Helper function to fetch food image from database
+  async function fetchFoodImage(foodName) {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/food-image?name=${encodeURIComponent(foodName)}`,
+        { credentials: "include" }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        return data.image_url;
+      }
+    } catch (err) {
+      console.error("Error fetching food image:", err);
+    }
+    return "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800";
+  }
+
+  // Helper function to fetch exercise image from database
+  async function fetchExerciseImage(exerciseName) {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/exercise-image?name=${encodeURIComponent(exerciseName)}`,
+        { credentials: "include" }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        return data.image_url;
+      }
+    } catch (err) {
+      console.error("Error fetching exercise image:", err);
+    }
+    return "https://images.pexels.com/photos/1552103/pexels-photo-1552103.jpeg?auto=compress&cs=tinysrgb&w=800";
+  }
 
   // Logout handler
   async function handleLogout() {
@@ -94,31 +134,43 @@ export default function PersonalizedPlans() {
 
       // Update state with the generated plan
       if (result.safe_plan) {
-        const generatedWorkouts = result.safe_plan.workouts.map((w, index) => ({
-          id: index + 1,
-          title: w.name,
-          category: "Workout",
-          level: "Intermediate",
-          duration: w.duration || "30 min",
-          calories: w.estimated_calories || 200,
-          image: "https://images.pexels.com/photos/1552103/pexels-photo-1552103.jpeg?auto=compress&cs=tinysrgb&w=800",
-          focus: w.category || "Full body",
-          equipment: ["Equipment varies"],
-          description: `AI-generated workout for: ${goal}`,
-          tutorialUrl: "https://youtube.com/",
-        }));
+        // Fetch images for workouts from database
+        const generatedWorkouts = await Promise.all(
+          result.safe_plan.workouts.map(async (w, index) => {
+            const imageUrl = await fetchExerciseImage(w.name);
+            return {
+              id: index + 1,
+              title: w.name,
+              category: "Workout",
+              level: "Intermediate",
+              duration: w.duration || "30 min",
+              calories: w.estimated_calories || 200,
+              image: imageUrl,
+              focus: w.category || "Full body",
+              equipment: ["Equipment varies"],
+              description: `AI-generated workout for: ${goal}`,
+              tutorialUrl: "https://youtube.com/",
+            };
+          })
+        );
 
-        const generatedMeals = result.safe_plan.meals.map((m, index) => ({
-          id: index + 1,
-          title: m.name,
-          category: "Meal",
-          timeOfDay: index === 0 ? "Breakfast" : index === 1 ? "Lunch" : "Dinner",
-          calories: m.calories || 400,
-          protein: m.protein || 0,
-          carbs: m.carbs || 0,
-          fat: m.fat || 0,
-          image: "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800",
-        }));
+        // Fetch images for meals from database
+        const generatedMeals = await Promise.all(
+          result.safe_plan.meals.map(async (m, index) => {
+            const imageUrl = await fetchFoodImage(m.name);
+            return {
+              id: index + 1,
+              title: m.name,
+              category: "Meal",
+              timeOfDay: index === 0 ? "Breakfast" : index === 1 ? "Lunch" : "Dinner",
+              calories: m.calories || 400,
+              protein: m.protein || 0,
+              carbs: m.carbs || 0,
+              fat: m.fat || 0,
+              image: imageUrl,
+            };
+          })
+        );
 
         setWorkouts(generatedWorkouts);
         setMeals(generatedMeals);
@@ -135,39 +187,106 @@ export default function PersonalizedPlans() {
     }
   }
 
+  // Handle save plan
+  async function handleSavePlan() {
+    setSavingPlan(true);
+    setSaveMessage("");
+
+    try {
+      // Parse allergies and injuries from the form inputs
+      const allergyList = allergies
+        .split(",")
+        .map(a => a.trim())
+        .filter(a => a.length > 0);
+      
+      const injuryList = injuries
+        .split(",")
+        .map(i => i.trim())
+        .filter(i => i.length > 0);
+
+      const response = await fetch("http://localhost:8000/api/save-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          goal: goal,
+          meals: meals,
+          workouts: workouts,
+          replacements: replacements,
+          allergies: allergyList,
+          injuries: injuryList
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Failed to save plan");
+      }
+
+      if (data.success) {
+        setSaveMessage("✅ Plan saved successfully! Profile updated.");
+        setTimeout(() => setSaveMessage(""), 3000);
+      } else if (data.error === "max_plans_reached") {
+        setOldestPlan(data.oldest_plan);
+        setShowMaxPlansModal(true);
+      }
+    } catch (err) {
+      console.error("Error saving plan:", err);
+      setSaveMessage("❌ " + err.message);
+      setTimeout(() => setSaveMessage(""), 5000);
+    } finally {
+      setSavingPlan(false);
+    }
+  }
+
+  // Handle replacing oldest plan
+  async function handleReplaceOldest() {
+    if (!oldestPlan) return;
+
+    try {
+      // Delete oldest plan
+      const deleteResponse = await fetch(`http://localhost:8000/api/plans/${oldestPlan.id}`, {
+        method: "DELETE",
+        credentials: "include"
+      });
+
+      if (!deleteResponse.ok) {
+        throw new Error("Failed to delete oldest plan");
+      }
+
+      // Close modal
+      setShowMaxPlansModal(false);
+      
+      // Try saving again
+      await handleSavePlan();
+    } catch (err) {
+      console.error("Error replacing plan:", err);
+      setSaveMessage("❌ " + err.message);
+      setTimeout(() => setSaveMessage(""), 5000);
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100 text-black">
-      <Navbar />
+  <div className="min-h-screen bg-gray-100 text-black">
+    <Navbar />
+    
+    {/* Header */}
+    <div className="mx-auto max-w-2xl px-4 pt-8">
+      <h1 className="text-2xl font-bold">
+        {showForm ? "Dashboard" : "Your Personalized Plans"}
+      </h1>
+      <p className="text-sm text-gray-600">
+        {showForm 
+          ? "Generate personalized workout and meal plans" 
+          : `Plan generated for: ${goal}`}
+      </p>
+    </div>
 
-      {/* User info + logout button */}
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 pt-4 pb-2">
-        <p className="text-sm text-gray-600">
-          Welcome! You're logged in
-        </p>
-        <button
-          onClick={handleLogout}
-          className="rounded-md bg-black px-3 py-1 text-xs font-medium text-white hover:bg-gray-900 transition-colors"
-        >
-          Logout
-        </button>
-      </div>
-
-      {/* Header */}
-      <div className="mx-auto max-w-6xl px-4 pt-2">
-        <h1 className="text-2xl font-bold">
-          {showForm ? "Dashboard" : "Your Personalized Plans"}
-        </h1>
-        <p className="text-sm text-gray-600">
-          {showForm 
-            ? "Generate personalized workout and meal plans" 
-            : `Plan generated for: ${goal}`}
-        </p>
-      </div>
-
-      {/* Show form if no plan generated yet */}
-      {showForm && (
-        <div className="mx-auto max-w-2xl px-4 py-8">
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
+    {/* Show form if no plan generated yet */}
+    {showForm && (
+      <div className="mx-auto max-w-2xl px-4 py-8">
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="text-2xl font-bold mb-4">Generate Your Personalized Plan</h2>
             <p className="text-sm text-gray-600 mb-6">
               Tell us about your goals, allergies, and any injuries so we can create a safe and effective plan for you.
@@ -299,19 +418,30 @@ export default function PersonalizedPlans() {
             </div>
           )}
 
+          {/* Save message */}
+          {saveMessage && (
+            <div className={`mb-4 rounded-md border px-4 py-3 text-sm ${
+              saveMessage.includes('✅') 
+                ? 'border-green-200 bg-green-50 text-green-700'
+                : 'border-red-200 bg-red-50 text-red-700'
+            }`}>
+              {saveMessage}
+            </div>
+          )}
+
           <div className="flex gap-6 flex-col lg:flex-row">
             {/* LEFT: workout column */}
             <section className="flex-1 rounded-2xl bg-white p-4 shadow-sm">
               <header className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-semibold text-black">
-                  <span className="text-xs text-gray-400">💪</span>
+                  <span className="text-xs text-gray-400"></span>
                   WORKOUTS
                 </div>
                 <button 
                   onClick={() => setShowForm(true)}
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  ✨ Generate New Plan
+                  ✨ Generate New
                 </button>
               </header>
 
@@ -330,14 +460,14 @@ export default function PersonalizedPlans() {
             <section className="flex-1 rounded-2xl bg-white p-4 shadow-sm">
               <header className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-semibold text-black">
-                  <span className="text-xs text-gray-400">🍽️</span>
+                  <span className="text-xs text-gray-400"></span>
                   MEALS
                 </div>
                 <button 
                   onClick={() => setShowForm(true)}
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                 >
-                  ✨ Generate New Plan
+                  ✨ Generate New
                 </button>
               </header>
 
@@ -417,9 +547,69 @@ export default function PersonalizedPlans() {
                       </div>
                     </div>
                   )}
+
+                  {/* Save Plan Button */}
+                  <div className="border-t pt-4">
+                    <button
+                      onClick={handleSavePlan}
+                      disabled={savingPlan}
+                      className="w-full rounded-lg bg-green-600 px-4 py-3 font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      {savingPlan ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          Save This Plan
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </aside>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Max Plans Modal */}
+      {showMaxPlansModal && oldestPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="mx-4 max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              Maximum Plans Reached
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              You already have 5 saved plans (the maximum). Would you like to delete your oldest plan and save this new one?
+            </p>
+            
+            <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 mb-4">
+              <p className="text-xs font-semibold text-gray-500 mb-1">OLDEST PLAN:</p>
+              <p className="text-sm font-medium text-gray-900">{oldestPlan.goal}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Created: {new Date(oldestPlan.created_at).toLocaleDateString()}
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowMaxPlansModal(false)}
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReplaceOldest}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+              >
+                Delete & Save New
+              </button>
+            </div>
           </div>
         </div>
       )}

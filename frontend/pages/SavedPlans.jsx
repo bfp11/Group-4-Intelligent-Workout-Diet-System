@@ -194,9 +194,9 @@ export default function SavedPlans() {
                     >
                         {/* Meal Image */}
                         <img
-                        src="https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800"
-                        alt={meal.name}
-                        className="h-40 w-full object-cover"
+                          src={meal.image_url || "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800"}
+                          alt={meal.name}
+                          className="h-40 w-full object-cover"
                         />
                         
                         <div className="p-4">
@@ -269,9 +269,9 @@ export default function SavedPlans() {
                     >
                         {/* Workout Image */}
                         <img
-                        src="https://images.pexels.com/photos/1552103/pexels-photo-1552103.jpeg?auto=compress&cs=tinysrgb&w=800"
-                        alt={workout.name}
-                        className="h-40 w-full object-cover"
+                          src={workout.image_url || "https://images.pexels.com/photos/1552103/pexels-photo-1552103.jpeg?auto=compress&cs=tinysrgb&w=800"}
+                          alt={workout.name}
+                          className="h-40 w-full object-cover"
                         />
                         
                         <div className="p-4">

@@ -1,4 +1,4 @@
-// pages/PersonalizedPlans.jsx - With logout and save plan functionality
+// pages/PersonalizedPlans.jsx - With logout, save plan functionality, and database images
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../src/components/Navbar.jsx";
@@ -55,6 +55,40 @@ export default function PersonalizedPlans() {
     };
   }, [workouts.length, meals.length]);
 
+  // Helper function to fetch food image from database
+  async function fetchFoodImage(foodName) {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/food-image?name=${encodeURIComponent(foodName)}`,
+        { credentials: "include" }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        return data.image_url;
+      }
+    } catch (err) {
+      console.error("Error fetching food image:", err);
+    }
+    return "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800";
+  }
+
+  // Helper function to fetch exercise image from database
+  async function fetchExerciseImage(exerciseName) {
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/exercise-image?name=${encodeURIComponent(exerciseName)}`,
+        { credentials: "include" }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        return data.image_url;
+      }
+    } catch (err) {
+      console.error("Error fetching exercise image:", err);
+    }
+    return "https://images.pexels.com/photos/1552103/pexels-photo-1552103.jpeg?auto=compress&cs=tinysrgb&w=800";
+  }
+
   // Logout handler
   async function handleLogout() {
     try {
@@ -100,31 +134,43 @@ export default function PersonalizedPlans() {
 
       // Update state with the generated plan
       if (result.safe_plan) {
-        const generatedWorkouts = result.safe_plan.workouts.map((w, index) => ({
-          id: index + 1,
-          title: w.name,
-          category: "Workout",
-          level: "Intermediate",
-          duration: w.duration || "30 min",
-          calories: w.estimated_calories || 200,
-          image: "https://images.pexels.com/photos/1552103/pexels-photo-1552103.jpeg?auto=compress&cs=tinysrgb&w=800",
-          focus: w.category || "Full body",
-          equipment: ["Equipment varies"],
-          description: `AI-generated workout for: ${goal}`,
-          tutorialUrl: "https://youtube.com/",
-        }));
+        // Fetch images for workouts from database
+        const generatedWorkouts = await Promise.all(
+          result.safe_plan.workouts.map(async (w, index) => {
+            const imageUrl = await fetchExerciseImage(w.name);
+            return {
+              id: index + 1,
+              title: w.name,
+              category: "Workout",
+              level: "Intermediate",
+              duration: w.duration || "30 min",
+              calories: w.estimated_calories || 200,
+              image: imageUrl,
+              focus: w.category || "Full body",
+              equipment: ["Equipment varies"],
+              description: `AI-generated workout for: ${goal}`,
+              tutorialUrl: "https://youtube.com/",
+            };
+          })
+        );
 
-        const generatedMeals = result.safe_plan.meals.map((m, index) => ({
-          id: index + 1,
-          title: m.name,
-          category: "Meal",
-          timeOfDay: index === 0 ? "Breakfast" : index === 1 ? "Lunch" : "Dinner",
-          calories: m.calories || 400,
-          protein: m.protein || 0,
-          carbs: m.carbs || 0,
-          fat: m.fat || 0,
-          image: "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800",
-        }));
+        // Fetch images for meals from database
+        const generatedMeals = await Promise.all(
+          result.safe_plan.meals.map(async (m, index) => {
+            const imageUrl = await fetchFoodImage(m.name);
+            return {
+              id: index + 1,
+              title: m.name,
+              category: "Meal",
+              timeOfDay: index === 0 ? "Breakfast" : index === 1 ? "Lunch" : "Dinner",
+              calories: m.calories || 400,
+              protein: m.protein || 0,
+              carbs: m.carbs || 0,
+              fat: m.fat || 0,
+              image: imageUrl,
+            };
+          })
+        );
 
         setWorkouts(generatedWorkouts);
         setMeals(generatedMeals);
@@ -167,8 +213,8 @@ export default function PersonalizedPlans() {
           meals: meals,
           workouts: workouts,
           replacements: replacements,
-          allergies: allergyList,  // Add this
-          injuries: injuryList     // Add this
+          allergies: allergyList,
+          injuries: injuryList
         })
       });
 

@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from rules_engine import RulesEngine
 from llm_service import generate_plan_from_llm
 from database import get_supabase_client
+from utils.images import get_smart_food_image, get_smart_exercise_image
 
 # ============================================
 # FASTAPI APP SETUP
@@ -511,7 +512,7 @@ async def delete_plan(plan_id: str, session_id: Optional[str] = Cookie(None)):
 async def get_saved_plans(session_id: Optional[str] = Cookie(None)):
     """
     Get all saved plans for the logged-in user with their meals and workouts
-    Enriches meal data with allergen information from food_items table
+    Enriches meal data with allergen information and images using smart keyword matching
     """
     # Check authentication
     session_data = get_session(session_id)
@@ -540,14 +541,17 @@ async def get_saved_plans(session_id: Optional[str] = Cookie(None)):
                 .eq('plan_id', plan_id)\
                 .execute()
             
-            # Enrich meals with allergen info from food_items
+            # Enrich meals with allergen info AND smart IMAGE matching
             enriched_meals = []
             for meal in meals_result.data:
-                # Try to find matching food item in database
+                # Try to find matching food item in database for allergens
                 food_item = supabase.table('food_items')\
                     .select('allergens')\
                     .eq('name', meal['name'])\
                     .execute()
+                
+                # Use smart keyword matching for image
+                image_url = get_smart_food_image(meal['name'])
                 
                 meal_data = {
                     'name': meal['name'],
@@ -557,7 +561,8 @@ async def get_saved_plans(session_id: Optional[str] = Cookie(None)):
                     'carbs': meal['carbs'],
                     'fat': meal['fat'],
                     'was_replaced': meal['was_replaced'],
-                    'allergens': food_item.data[0]['allergens'] if food_item.data else []
+                    'allergens': food_item.data[0]['allergens'] if food_item.data else [],
+                    'image_url': image_url
                 }
                 enriched_meals.append(meal_data)
             
@@ -567,14 +572,17 @@ async def get_saved_plans(session_id: Optional[str] = Cookie(None)):
                 .eq('plan_id', plan_id)\
                 .execute()
             
-            # Enrich workouts with exercise info from exercise_items
+            # Enrich workouts with exercise info AND smart IMAGE matching
             enriched_workouts = []
             for workout in workouts_result.data:
-                # Try to find matching exercise item in database
+                # Try to find matching exercise item in database for metadata
                 exercise_item = supabase.table('exercise_items')\
                     .select('category, difficulty_level, contraindications')\
                     .eq('name', workout['name'])\
                     .execute()
+                
+                # Use smart keyword matching for image
+                image_url = get_smart_exercise_image(workout['name'])
                 
                 workout_data = {
                     'name': workout['name'],
@@ -583,7 +591,8 @@ async def get_saved_plans(session_id: Optional[str] = Cookie(None)):
                     'was_replaced': workout['was_replaced'],
                     'category': exercise_item.data[0]['category'] if exercise_item.data else None,
                     'difficulty_level': exercise_item.data[0]['difficulty_level'] if exercise_item.data else None,
-                    'contraindications': exercise_item.data[0]['contraindications'] if exercise_item.data else []
+                    'contraindications': exercise_item.data[0]['contraindications'] if exercise_item.data else [],
+                    'image_url': image_url
                 }
                 enriched_workouts.append(workout_data)
             
@@ -605,6 +614,67 @@ async def get_saved_plans(session_id: Optional[str] = Cookie(None)):
     except Exception as e:
         print(f"Error fetching plans: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ============================================
+# IMAGE ENDPOINTS
+# ============================================
+
+@app.get("/api/exercise-image")
+async def get_exercise_image(name: str, session_id: Optional[str] = Cookie(None)):
+    """
+    Get image URL for a specific exercise item with smart keyword matching
+    """
+    session_data = get_session(session_id)
+    if not session_data:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    supabase = get_supabase_client()
+    
+    try:
+        # First try exact match in database
+        result = supabase.table('exercise_items')\
+            .select('image_url')\
+            .eq('name', name)\
+            .execute()
+        
+        if result.data and result.data[0]['image_url']:
+            return {"image_url": result.data[0]['image_url']}
+        
+        # Use smart keyword matching
+        return {"image_url": get_smart_exercise_image(name)}
+    
+    except Exception as e:
+        print(f"Error fetching exercise image: {e}")
+        return {"image_url": get_smart_exercise_image(name)}
+
+
+@app.get("/api/food-image")
+async def get_food_image(name: str, session_id: Optional[str] = Cookie(None)):
+    """
+    Get image URL for a specific food item with smart keyword matching
+    """
+    session_data = get_session(session_id)
+    if not session_data:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    supabase = get_supabase_client()
+    
+    try:
+        # First try exact match in database
+        result = supabase.table('food_items')\
+            .select('image_url')\
+            .eq('name', name)\
+            .execute()
+        
+        if result.data and result.data[0]['image_url']:
+            return {"image_url": result.data[0]['image_url']}
+        
+        # Use smart keyword matching
+        return {"image_url": get_smart_food_image(name)}
+    
+    except Exception as e:
+        print(f"Error fetching food image: {e}")
+        return {"image_url": get_smart_food_image(name)}
 
 # ============================================
 # PROFILE ENDPOINTS

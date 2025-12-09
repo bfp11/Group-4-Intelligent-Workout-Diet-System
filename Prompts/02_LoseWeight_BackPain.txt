@@ -1,0 +1,30 @@
+Create a fat-loss meal and workout plan for this college student:
+
+
+Goal: lose weight
+Allergies: none
+Injuries / pain: chronic lower back pain (avoid deadlifts, bent-over rows, heavy overhead presses, crunches that flex the spine)
+
+Rules:
+- Calorie deficit for fat loss but still high protein
+- All exercises must be back-friendly (no spinal flexion or heavy loading on the lower back)
+- Prefer seated, supported, or lying exercises
+- Student only has access to basic university gym
+
+Return ONLY valid JSON in this exact simple format:
+
+{
+  "meals": [
+    { "name": "Grilled Chicken Breast", "calories": 350 },
+    { "name": "Quinoa", "calories": 200 },
+    { "name": "Greek Yogurt with Blueberries", "calories": 150 },
+    { "name": "Steamed Broccoli", "calories": 55 },
+    { "name": "Cottage Cheese", "calories": 206 }
+  ],
+  "workouts": [
+    { "name": "Seated Row", "duration": "3 sets of 10" },
+    { "name": "Hip Thrust", "duration": "3 sets of 12" },
+    { "name": "Stationary Bike", "duration": "20 minutes" },
+    { "name": "Bicycle Crunch", "duration": "3 sets of 15" }
+  ]
+}

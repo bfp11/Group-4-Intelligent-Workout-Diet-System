@@ -37,9 +37,22 @@ Group-4-Intelligent-Workout-Diet-System/
 │   │   ├── api.js         # API service layer
 │   │   └── main.jsx       # React app entry point
 │   └── pages/             # Page components
+│       ├── App.jsx
+│       ├── PersonalizedPlans.jsx
+│       ├── Profile.jsx
+│       └── SavedPlans.jsx
+├── package-lock.json
+├── package.json
 │
 ├── backend/               # FastAPI backend
-├── utils/
+│   ├── tests/             # All 6 test files
+│   │   ├── conftest.py
+│   │   ├── test_api_endpoints.py
+│   │   ├── test_auth.py
+│   │   ├── test_image_matching.py
+│   │   ├── test_llm_service.py
+│   │   └── test_rules_engine.py
+│   ├── utils/
 │   │   ├── __init__.py/  #
 │   │   └── images.py/    # Image endpoints
 │   ├── main.py           # API routes and endpoints
@@ -48,10 +61,8 @@ Group-4-Intelligent-Workout-Diet-System/
 │   ├── llm_service.py    # OpenAI API integration
 │   └── requirements.txt  # Python dependencies
 │
-├── docs/                 # Documentation and reports
 ├── .gitignore
-├── README.md
-└── LICENSE
+└── README.md
 ```
 
 ## Installation & Setup
@@ -253,3 +264,56 @@ Visit http://127.0.0.1:8000/docs for interactive API documentation
 - **Social Features** – Share plans and compete with friends
 - **Meal Prep Guides** – Detailed cooking instructions
 - **Video Tutorials** – Exercise demonstration videos
+
+## Running Unit Tests
+
+### Prerequisites
+Ensure you have all dependencies installed:
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+### Run All Tests
+```bash
+pytest
+```
+
+### Run Specific Test Files
+```bash
+# API endpoint tests
+pytest tests/test_api_endpoints.py -v
+
+# Authentication tests  
+pytest tests/test_auth.py -v
+
+# Image matching tests
+pytest tests/test_image_matching.py -v
+
+# LLM service tests
+pytest tests/test_llm_service.py -v
+
+# Rules engine tests
+pytest tests/test_rules_engine.py -v
+```
+
+### Generate Coverage Report
+```bash
+pytest --cov=. --cov-report=html
+# Then open htmlcov/index.html in your browser
+```
+
+### Test Results Summary
+- **Total Tests:** 68 unit tests
+- **Pass Rate:** 59/68 (86%)
+- **Execution Time:** ~4.25 seconds
+- **Framework:** pytest 7.4.3
+
+
+### What's Tested
+- User authentication (bcrypt password hashing, session management)
+- API endpoints (signup, login, plan generation, saved plans)
+- Smart image matching algorithm (keyword-based selection)
+- LLM integration (OpenAI API, JSON parsing, duplicate removal)
+- Safety validation (allergen detection, contraindication checking)
+- Plan substitution logic (retry mechanism, duplicate prevention)
